@@ -9,7 +9,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.OpenableColumns;
 import android.webkit.JavascriptInterface;
-import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -26,7 +25,6 @@ import java.io.InputStream;
 public class MainActivity extends Activity {
 
     private WebView webView;
-    private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST = 1;
 
     @Override
@@ -38,44 +36,31 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         webView = findViewById(R.id.webview);
 
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-        settings.setLoadsImagesAutomatically(true);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(true);
+        WebSettings s = webView.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setAllowFileAccess(true);
+        s.setAllowContentAccess(true);
+        s.setLoadsImagesAutomatically(true);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        s.setLoadWithOverviewMode(true);
+        s.setUseWideViewPort(true);
 
         webView.addJavascriptInterface(new Bridge(this), "AndroidBridge");
         webView.setWebViewClient(new WebViewClient());
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onShowFileChooser(WebView wv, ValueCallback<Uri[]> callback,
-                                             FileChooserParams params) {
-                if (filePathCallback != null) filePathCallback.onReceiveValue(null);
-                filePathCallback = callback;
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("image/*");
-                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                startActivityForResult(Intent.createChooser(intent, "Select Images"), FILE_CHOOSER_REQUEST);
-                return true;
-            }
-        });
+        webView.setWebChromeClient(new WebChromeClient());
         webView.loadUrl("file:///android_asset/public/index.html");
     }
 
     private String getRealFileName(Uri uri) {
-        try (Cursor cursor = getContentResolver().query(uri,
+        try (Cursor c = getContentResolver().query(uri,
                 new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                String name = cursor.getString(0);
+            if (c != null && c.moveToFirst()) {
+                String name = c.getString(0);
                 if (name != null && !name.isEmpty()) return name;
             }
-        } catch (Exception e) { /* ignore */ }
+        } catch (Exception ignored) {}
         String last = uri.getLastPathSegment();
         return (last != null) ? last : "image.png";
     }
@@ -93,12 +78,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode != FILE_CHOOSER_REQUEST) return;
-
-        // Always resolve the callback, even on cancel
-        if (resultCode != Activity.RESULT_OK || data == null) {
-            if (filePathCallback != null) { filePathCallback.onReceiveValue(null); filePathCallback = null; }
-            return;
-        }
+        if (resultCode != Activity.RESULT_OK || data == null) return;
 
         Uri[] uris = null;
         if (data.getClipData() != null) {
@@ -109,35 +89,27 @@ public class MainActivity extends Activity {
         } else if (data.getData() != null) {
             uris = new Uri[]{ data.getData() };
         }
+        if (uris == null) return;
 
-        if (uris == null) {
-            if (filePathCallback != null) { filePathCallback.onReceiveValue(null); filePathCallback = null; }
-            return;
-        }
-
-        // Read real names and file data in background, then send to JS
         final Uri[] finalUris = uris;
-        final ValueCallback<Uri[]> cb = filePathCallback;
-        filePathCallback = null;
-
-        // First resolve the callback with null so WebView doesn't hang
-        // We bypass the WebView file input and handle everything via JS bridge
-        cb.onReceiveValue(null);
-
         new Thread(() -> {
             for (Uri uri : finalUris) {
                 try {
                     String realName = getRealFileName(uri);
-                    String mimeType = getContentResolver().getType(uri);
-                    if (mimeType == null) mimeType = "image/jpeg";
+                    String mime = getContentResolver().getType(uri);
+                    if (mime == null) mime = "image/jpeg";
                     byte[] bytes = readBytes(uri);
                     String b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
-                    String dataUrl = "data:" + mimeType + ";base64," + b64;
-                    String safeName = realName.replace("\\","\\\\").replace("\"","\\\"").replace("\n","").replace("\r","");
-                    String js = "receiveImageFromJava(\"" + dataUrl + "\",\"" + safeName + "\");";
+                    String dataUrl = "data:" + mime + ";base64," + b64;
+                    String safeName = realName
+                        .replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "")
+                        .replace("\r", "");
+                    String js = "receiveImage(\"" + dataUrl + "\",\"" + safeName + "\");";
                     runOnUiThread(() -> webView.evaluateJavascript(js, null));
-                    Thread.sleep(50);
-                } catch (Exception e) { /* skip */ }
+                    Thread.sleep(80);
+                } catch (Exception ignored) {}
             }
         }).start();
     }
@@ -153,35 +125,49 @@ public class MainActivity extends Activity {
         Bridge(Context ctx) { this.ctx = ctx; }
 
         @JavascriptInterface
+        public void openPicker() {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("image/*");
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            startActivityForResult(
+                Intent.createChooser(intent, "Select Images"),
+                FILE_CHOOSER_REQUEST
+            );
+        }
+
+        @JavascriptInterface
         public void saveBase64Image(String base64Data, String filename) {
             try {
-                String safeName = filename.replaceAll("[^a-zA-Z0-9._\\-() ]", "_").trim();
+                String safeName = filename
+                    .replaceAll("[^a-zA-Z0-9._\\-() ]", "_")
+                    .trim();
                 if (safeName.isEmpty()) safeName = "image.png";
                 if (!safeName.toLowerCase().endsWith(".png"))
                     safeName = safeName.replaceAll("\\.[^.]+$", "") + ".png";
 
                 byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
                 File dir = new File(
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "Bleed Edge"
-                );
+                    Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_DOWNLOADS), "Bleed Edge");
                 if (!dir.exists()) dir.mkdirs();
-                File outFile = new File(dir, safeName);
-                int counter = 1;
-                while (outFile.exists()) {
-                    outFile = new File(dir, safeName.replace(".png","") + "_" + counter + ".png");
-                    counter++;
-                }
-                FileOutputStream fos = new FileOutputStream(outFile);
+
+                File out = new File(dir, safeName);
+                int i = 1;
+                while (out.exists())
+                    out = new File(dir, safeName.replace(".png","") + "_" + i++ + ".png");
+
+                FileOutputStream fos = new FileOutputStream(out);
                 fos.write(bytes);
                 fos.flush();
                 fos.close();
-            } catch (Exception e) { /* silent */ }
+            } catch (Exception ignored) {}
         }
 
         @JavascriptInterface
         public void showToast(final String msg) {
-            runOnUiThread(() -> Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show());
+            runOnUiThread(() ->
+                Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show());
         }
     }
 }
