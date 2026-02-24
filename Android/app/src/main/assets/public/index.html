@@ -3,42 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Mirror Border</title>
-<meta name="theme-color" content="#0d0d1a">
+<title>Bleed Edge Setter</title>
+<meta name="theme-color" content="#0a0a14">
 <style>
   :root {
-    --accent:#7c6af7; --accent-light:#a89ff9; --accent-dark:#4a3fc0;
-    --deep:#0d0d1a; --surface:#13131f; --surface2:#1c1c2e;
-    --border:#2a2a45; --text:#e8e6ff; --muted:#6a6a8a;
+    --gold:#dca03c; --gold-light:#f0c060; --gold-dark:#8a5a10;
+    --deep:#0a0a14; --surface:#111118; --surface2:#191920;
+    --border:#2a2820; --text:#f0ead8; --muted:#7a7060;
+    --green:#27ae60; --green-dark:#1a4a2a;
   }
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { background:var(--deep); color:var(--text); font-family:Georgia,serif; min-height:100vh; padding-bottom:40px; }
-
   .topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:16px 20px 12px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:10; }
-  .topbar-icon { width:36px; height:36px; background:linear-gradient(135deg,var(--accent-dark),var(--accent)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:bold; color:#fff; flex-shrink:0; }
-  .topbar h1 { font-size:1rem; color:var(--accent-light); letter-spacing:0.05em; }
+  .topbar-icon { width:36px; height:36px; background:linear-gradient(135deg,var(--gold-dark),var(--gold)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:bold; color:#0a0a14; flex-shrink:0; letter-spacing:-0.5px; }
+  .topbar h1 { font-size:1rem; color:var(--gold-light); letter-spacing:0.05em; }
   .topbar p { font-size:0.72rem; color:var(--muted); }
-
   .main { padding:20px; }
   .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; position:relative; }
-  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); border-radius:12px 12px 0 0; }
-  .card-label { font-size:0.7rem; letter-spacing:0.15em; color:var(--accent-light); text-transform:uppercase; margin-bottom:14px; }
-
+  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--gold),transparent); border-radius:12px 12px 0 0; }
+  .card-label { font-size:0.7rem; letter-spacing:0.15em; color:var(--gold); text-transform:uppercase; margin-bottom:14px; }
+  .type-toggle { display:flex; gap:8px; margin-bottom:18px; }
+  .type-btn { flex:1; padding:12px 8px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:0.82rem; font-family:Georgia,serif; cursor:pointer; text-align:center; transition:all 0.2s; }
+  .type-btn.active { background:linear-gradient(135deg,var(--gold-dark),var(--gold)); color:#0a0a14; border-color:var(--gold); font-weight:bold; }
+  .type-btn .t-icon { font-size:1.2rem; display:block; margin-bottom:4px; }
+  .type-btn .t-label { font-size:0.75rem; display:block; }
   .border-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
   .border-row label { font-size:0.82rem; color:var(--muted); white-space:nowrap; }
   input[type=number] { background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:1rem; padding:10px 14px; outline:none; width:100px; text-align:center; }
-  input[type=number]:focus { border-color:var(--accent-dark); }
+  input[type=number]:focus { border-color:var(--gold-dark); }
   .px-label { font-size:0.82rem; color:var(--muted); }
   .slider-row { display:flex; align-items:center; gap:10px; }
-  input[type=range] { flex:1; accent-color:var(--accent); }
-
+  input[type=range] { flex:1; accent-color:var(--gold); }
   .drop-zone { border:2px dashed var(--border); border-radius:12px; padding:32px 20px; text-align:center; cursor:pointer; transition:border-color 0.2s, background 0.2s; background:var(--surface2); }
-  .drop-zone.dragover { border-color:var(--accent); background:rgba(124,106,247,0.08); }
-  .drop-zone .dz-icon { font-size:2rem; margin-bottom:8px; color:var(--accent-light); font-weight:bold; }
+  .drop-zone.dragover { border-color:var(--gold); background:rgba(220,160,60,0.06); }
+  .drop-zone .dz-icon { font-size:2rem; color:var(--gold-light); font-weight:bold; margin-bottom:8px; }
   .drop-zone p { font-size:0.85rem; color:var(--muted); line-height:1.6; }
-  .drop-zone strong { color:var(--accent-light); }
+  .drop-zone strong { color:var(--gold-light); }
   #file-input { display:none; }
-
   #queue-list { margin-top:14px; }
   .q-item { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:8px; display:flex; align-items:center; gap:10px; }
   .q-thumb { width:44px; height:44px; border-radius:6px; object-fit:cover; flex-shrink:0; background:var(--border); }
@@ -46,45 +47,45 @@
   .q-name { font-size:0.82rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .q-size { font-size:0.7rem; color:var(--muted); }
   .q-status { font-size:0.75rem; font-weight:bold; flex-shrink:0; }
-  .q-status.done { color:#6fcf97; }
-  .q-status.fail { color:#eb5757; }
-  .q-status.pending { color:var(--muted); }
-  .q-status.processing { color:var(--accent-light); }
-
-  .btn-primary { width:100%; background:linear-gradient(135deg,var(--accent-dark),var(--accent)); color:#fff; font-weight:bold; font-size:0.9rem; letter-spacing:0.1em; border:none; border-radius:10px; padding:14px; cursor:pointer; margin-top:12px; box-shadow:0 4px 20px rgba(124,106,247,0.3); }
+  .q-status.done { color:#6fcf97; } .q-status.fail { color:#eb5757; } .q-status.pending { color:var(--muted); } .q-status.processing { color:var(--gold-light); }
+  .btn-primary { width:100%; background:linear-gradient(135deg,var(--gold-dark),var(--gold)); color:#0a0a14; font-weight:bold; font-size:0.9rem; letter-spacing:0.1em; border:none; border-radius:10px; padding:14px; cursor:pointer; margin-top:12px; box-shadow:0 4px 20px rgba(220,160,60,0.25); }
   .btn-primary:disabled { opacity:0.4; }
   .btn-clear { width:100%; background:none; border:1px solid var(--border); color:var(--muted); font-size:0.82rem; border-radius:10px; padding:10px; cursor:pointer; margin-top:8px; }
-
+  .btn-save { width:100%; background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; font-weight:bold; font-size:0.9rem; letter-spacing:0.1em; border:none; border-radius:10px; padding:14px; cursor:pointer; margin-top:12px; box-shadow:0 4px 20px rgba(39,174,96,0.25); display:none; }
   .progress-track { background:var(--surface2); border:1px solid var(--border); border-radius:99px; height:8px; overflow:hidden; margin:12px 0; }
-  .progress-fill { height:100%; background:linear-gradient(90deg,var(--accent-dark),var(--accent-light)); border-radius:99px; width:0%; transition:width 0.3s; }
-  .progress-label { font-size:0.82rem; color:var(--accent-light); text-align:center; margin-bottom:8px; }
-
-  .btn-save { width:100%; background:linear-gradient(135deg,#1a4a2a,#27ae60); color:#fff; font-weight:bold; font-size:0.9rem; letter-spacing:0.1em; border:none; border-radius:10px; padding:14px; cursor:pointer; margin-top:12px; box-shadow:0 4px 20px rgba(39,174,96,0.3); display:none; }
-
-  .tips { background:rgba(124,106,247,0.04); border:1px solid rgba(124,106,247,0.15); border-radius:8px; padding:14px 16px; font-size:0.82rem; line-height:1.7; color:var(--muted); margin-top:10px; }
-  .tips strong { color:var(--accent-light); display:block; margin-bottom:4px; font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; }
-  .tips code { background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:0.8rem; color:var(--accent-light); }
-
+  .progress-fill { height:100%; background:linear-gradient(90deg,var(--gold-dark),var(--gold-light)); border-radius:99px; width:0%; transition:width 0.3s; }
+  .progress-label { font-size:0.82rem; color:var(--gold-light); text-align:center; margin-bottom:8px; }
+  .tips { background:rgba(220,160,60,0.04); border:1px solid rgba(220,160,60,0.12); border-radius:8px; padding:14px 16px; font-size:0.82rem; line-height:1.7; color:var(--muted); margin-top:10px; }
+  .tips strong { color:var(--gold-light); display:block; margin-bottom:4px; font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; }
+  .tips code { background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:0.8rem; color:var(--gold-light); }
   canvas { display:none; }
-
   @keyframes spin { to { transform:rotate(360deg); } }
-  .spinner { display:inline-block; width:12px; height:12px; border:2px solid rgba(124,106,247,0.3); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:6px; }
+  .spinner { display:inline-block; width:12px; height:12px; border:2px solid rgba(220,160,60,0.3); border-top-color:var(--gold); border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:6px; }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="topbar-icon">MB</div>
+  <div class="topbar-icon">BES</div>
   <div>
-    <h1>Mirror Border</h1>
-    <p>Reflect image edges by N pixels</p>
+    <h1>Bleed Edge Setter</h1>
+    <p>Add bleed borders to your images</p>
   </div>
 </div>
 
 <div class="main">
-
   <div class="card">
     <div class="card-label">Settings</div>
+    <div class="type-toggle">
+      <div class="type-btn active" id="btn-mirror" onclick="selectType('mirror')">
+        <span class="t-icon">[ ]</span>
+        <span class="t-label">Mirror</span>
+      </div>
+      <div class="type-btn" id="btn-black" onclick="selectType('black')">
+        <span class="t-icon">[ ]</span>
+        <span class="t-label">Black</span>
+      </div>
+    </div>
     <div class="border-row">
       <label>Border size</label>
       <input type="number" id="border-px" value="35" min="1" max="2000" oninput="syncSlider()">
@@ -113,41 +114,43 @@
     <div class="card-label">Progress</div>
     <div class="progress-label" id="progress-label"><span class="spinner"></span> Processing...</div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-    <button class="btn-save" id="btn-save-all" onclick="saveAll()">Save All to "Mirror Border"</button>
+    <button class="btn-save" id="btn-save-all" onclick="saveAll()">Save All to "Bleed Edge"</button>
   </div>
 
   <div class="card">
     <div class="card-label">How it works</div>
     <div class="tips">
-      <strong>Mirror reflection</strong>
-      Instead of a black border, the app extends the image by reflecting the edge pixels outward — like a mirror placed at each side. The output file keeps the same name as the original.
+      <strong>Mirror border</strong>
+      Extends the image by reflecting edge pixels outward — seamless, no hard edge.
+    </div>
+    <div class="tips">
+      <strong>Black border</strong>
+      Adds a solid black border of the chosen size around the image.
     </div>
     <div class="tips">
       <strong>Output</strong>
-      Images are saved as PNG in <code>Downloads / Mirror Border</code>.
+      Saved as PNG in <code>Downloads / Bleed Edge</code>. Filename stays the same as the original.
     </div>
   </div>
-
 </div>
 
 <canvas id="work-canvas"></canvas>
 
 <script>
-let queue = [];
-let results = [];
+let queue = [], results = [], borderType = 'mirror';
 
-function syncSlider() {
-  const v = parseInt(document.getElementById('border-px').value) || 1;
-  document.getElementById('border-slider').value = Math.min(v, 500);
+function selectType(type) {
+  borderType = type;
+  document.getElementById('btn-mirror').classList.toggle('active', type === 'mirror');
+  document.getElementById('btn-black').classList.toggle('active', type === 'black');
 }
-function syncInput() {
-  document.getElementById('border-px').value = document.getElementById('border-slider').value;
-}
+function syncSlider() { document.getElementById('border-slider').value = Math.min(parseInt(document.getElementById('border-px').value)||1, 500); }
+function syncInput() { document.getElementById('border-px').value = document.getElementById('border-slider').value; }
 
 function addFiles(files) {
   for (const f of files) {
     if (!f.type.startsWith('image/')) continue;
-    queue.push({ file: f, name: f.name, objectUrl: URL.createObjectURL(f), status: 'pending', resultBlob: null });
+    queue.push({ file:f, name:f.name, objectUrl:URL.createObjectURL(f), status:'pending' });
   }
   renderQueue();
   document.getElementById('btn-process').disabled = queue.length === 0;
@@ -162,190 +165,102 @@ function renderQueue() {
   const list = document.getElementById('queue-list');
   list.innerHTML = '';
   queue.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'q-item';
-    const thumb = document.createElement('img');
-    thumb.className = 'q-thumb';
-    thumb.src = item.objectUrl;
-    const info = document.createElement('div');
-    info.className = 'q-info';
-    const name = document.createElement('div');
-    name.className = 'q-name';
-    name.textContent = item.name;
-    const size = document.createElement('div');
-    size.className = 'q-size';
-    size.textContent = (item.file.size / 1024).toFixed(0) + ' KB';
-    info.appendChild(name);
-    info.appendChild(size);
-    const status = document.createElement('div');
-    status.className = 'q-status ' + item.status;
-    status.textContent = item.status === 'pending' ? 'Waiting'
-      : item.status === 'processing' ? 'Processing...'
-      : item.status === 'done' ? 'Done' : 'Error';
-    div.appendChild(thumb);
-    div.appendChild(info);
-    div.appendChild(status);
+    const div = document.createElement('div'); div.className = 'q-item';
+    const thumb = document.createElement('img'); thumb.className = 'q-thumb'; thumb.src = item.objectUrl;
+    const info = document.createElement('div'); info.className = 'q-info';
+    const name = document.createElement('div'); name.className = 'q-name'; name.textContent = item.name;
+    const size = document.createElement('div'); size.className = 'q-size'; size.textContent = (item.file.size/1024).toFixed(0)+' KB';
+    info.appendChild(name); info.appendChild(size);
+    const status = document.createElement('div'); status.className = 'q-status '+item.status;
+    status.textContent = item.status==='pending'?'Waiting':item.status==='processing'?'Processing...':item.status==='done'?'Done':'Error';
+    div.appendChild(thumb); div.appendChild(info); div.appendChild(status);
     list.appendChild(div);
   });
 }
 
 function clearQueue() {
   queue.forEach(i => URL.revokeObjectURL(i.objectUrl));
-  queue = [];
-  results = [];
-  renderQueue();
+  queue = []; results = []; renderQueue();
   document.getElementById('btn-process').disabled = true;
   document.getElementById('progress-card').style.display = 'none';
 }
 
-function applyMirrorBorder(img, borderPx) {
-  const sw = img.naturalWidth;
-  const sh = img.naturalHeight;
-  const dw = sw + borderPx * 2;
-  const dh = sh + borderPx * 2;
+function applyMirrorBorder(img, b) {
+  const sw = img.naturalWidth, sh = img.naturalHeight;
   const canvas = document.getElementById('work-canvas');
-  canvas.width = dw;
-  canvas.height = dh;
+  canvas.width = sw+b*2; canvas.height = sh+b*2;
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, dw, dh);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img, b, b);
+  ctx.save(); ctx.translate(b,b); ctx.scale(1,-1); ctx.drawImage(img,0,0,sw,b,0,0,sw,b); ctx.restore();
+  ctx.save(); ctx.translate(b,b+sh); ctx.scale(1,-1); ctx.drawImage(img,0,sh-b,sw,b,0,-b,sw,b); ctx.restore();
+  ctx.save(); ctx.translate(b,b); ctx.scale(-1,1); ctx.drawImage(img,0,0,b,sh,0,0,b,sh); ctx.restore();
+  ctx.save(); ctx.translate(b+sw,b); ctx.scale(-1,1); ctx.drawImage(img,sw-b,0,b,sh,-b,0,b,sh); ctx.restore();
+  ctx.save(); ctx.translate(b,b); ctx.scale(-1,-1); ctx.drawImage(img,0,0,b,b,0,0,b,b); ctx.restore();
+  ctx.save(); ctx.translate(b+sw,b); ctx.scale(1,-1); ctx.drawImage(img,sw-b,0,b,b,0,0,b,b); ctx.restore();
+  ctx.save(); ctx.translate(b,b+sh); ctx.scale(-1,1); ctx.drawImage(img,0,sh-b,b,b,0,0,b,b); ctx.restore();
+  ctx.save(); ctx.translate(b+sw,b+sh); ctx.scale(1,1); ctx.drawImage(img,sw-b,sh-b,b,b,0,0,b,b); ctx.restore();
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
 
-  // Center
-  ctx.drawImage(img, borderPx, borderPx);
-
-  // Top
-  ctx.save();
-  ctx.translate(borderPx, borderPx);
-  ctx.scale(1, -1);
-  ctx.drawImage(img, 0, 0, sw, borderPx, 0, 0, sw, borderPx);
-  ctx.restore();
-
-  // Bottom
-  ctx.save();
-  ctx.translate(borderPx, borderPx + sh);
-  ctx.scale(1, -1);
-  ctx.drawImage(img, 0, sh - borderPx, sw, borderPx, 0, -borderPx, sw, borderPx);
-  ctx.restore();
-
-  // Left
-  ctx.save();
-  ctx.translate(borderPx, borderPx);
-  ctx.scale(-1, 1);
-  ctx.drawImage(img, 0, 0, borderPx, sh, 0, 0, borderPx, sh);
-  ctx.restore();
-
-  // Right
-  ctx.save();
-  ctx.translate(borderPx + sw, borderPx);
-  ctx.scale(-1, 1);
-  ctx.drawImage(img, sw - borderPx, 0, borderPx, sh, -borderPx, 0, borderPx, sh);
-  ctx.restore();
-
-  // Top-left corner
-  ctx.save();
-  ctx.translate(borderPx, borderPx);
-  ctx.scale(-1, -1);
-  ctx.drawImage(img, 0, 0, borderPx, borderPx, 0, 0, borderPx, borderPx);
-  ctx.restore();
-
-  // Top-right corner
-  ctx.save();
-  ctx.translate(borderPx + sw, borderPx);
-  ctx.scale(1, -1);
-  ctx.drawImage(img, sw - borderPx, 0, borderPx, borderPx, 0, 0, borderPx, borderPx);
-  ctx.restore();
-
-  // Bottom-left corner
-  ctx.save();
-  ctx.translate(borderPx, borderPx + sh);
-  ctx.scale(-1, 1);
-  ctx.drawImage(img, 0, sh - borderPx, borderPx, borderPx, 0, 0, borderPx, borderPx);
-  ctx.restore();
-
-  // Bottom-right corner
-  ctx.save();
-  ctx.translate(borderPx + sw, borderPx + sh);
-  ctx.scale(1, 1);
-  ctx.drawImage(img, sw - borderPx, sh - borderPx, borderPx, borderPx, 0, 0, borderPx, borderPx);
-  ctx.restore();
-
+function applyBlackBorder(img, b) {
+  const canvas = document.getElementById('work-canvas');
+  canvas.width = img.naturalWidth+b*2; canvas.height = img.naturalHeight+b*2;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img, b, b);
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
 
 function loadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
-  });
+  return new Promise((resolve,reject) => { const img=new Image(); img.onload=()=>resolve(img); img.onerror=reject; img.src=url; });
 }
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
 async function processAll() {
-  const borderPx = parseInt(document.getElementById('border-px').value) || 64;
+  const borderPx = parseInt(document.getElementById('border-px').value)||35;
   results = [];
   document.getElementById('progress-card').style.display = 'block';
   document.getElementById('btn-save-all').style.display = 'none';
   document.getElementById('btn-process').disabled = true;
 
-  for (let i = 0; i < queue.length; i++) {
+  for (let i=0; i<queue.length; i++) {
     const item = queue[i];
-    item.status = 'processing';
-    renderQueue();
-    document.getElementById('progress-fill').style.width = Math.round(i / queue.length * 100) + '%';
-    document.getElementById('progress-label').innerHTML =
-      '<span class="spinner"></span> Processing ' + (i+1) + ' / ' + queue.length + '...';
-
+    item.status = 'processing'; renderQueue();
+    document.getElementById('progress-fill').style.width = Math.round(i/queue.length*100)+'%';
+    document.getElementById('progress-label').innerHTML = '<span class="spinner"></span> Processing '+(i+1)+' / '+queue.length+'...';
     try {
       const img = await loadImage(item.objectUrl);
-      const safeBorder = Math.min(borderPx,
-        Math.floor(img.naturalWidth / 2) - 1,
-        Math.floor(img.naturalHeight / 2) - 1);
-      const blob = await applyMirrorBorder(img, safeBorder);
-
-      // Keep original filename, change extension to .png
-      const baseName = item.name.replace(/\.[^.]+$/, '');
-      const filename = baseName + '.png';
-
-      item.resultBlob = blob;
-      item.status = 'done';
-      results.push({ blob, filename });
-    } catch(e) {
-      item.status = 'fail';
-    }
-    renderQueue();
-    await sleep(30);
+      const safeBorder = borderType==='mirror'
+        ? Math.min(borderPx, Math.floor(img.naturalWidth/2)-1, Math.floor(img.naturalHeight/2)-1)
+        : borderPx;
+      const blob = borderType==='mirror' ? await applyMirrorBorder(img,safeBorder) : await applyBlackBorder(img,safeBorder);
+      const filename = item.name.replace(/\.[^.]+$/,'')+'.png';
+      item.status = 'done'; results.push({blob, filename});
+    } catch(e) { item.status = 'fail'; }
+    renderQueue(); await sleep(30);
   }
 
   document.getElementById('progress-fill').style.width = '100%';
-  const doneCount = queue.filter(i => i.status === 'done').length;
-  document.getElementById('progress-label').textContent = 'Done! ' + doneCount + ' / ' + queue.length + ' processed';
-  document.getElementById('btn-save-all').style.display = doneCount > 0 ? 'block' : 'none';
+  const doneCount = queue.filter(i=>i.status==='done').length;
+  document.getElementById('progress-label').textContent = 'Done! '+doneCount+' / '+queue.length+' processed';
+  document.getElementById('btn-save-all').style.display = doneCount>0?'block':'none';
   document.getElementById('btn-process').disabled = false;
 }
 
 function saveAll() {
   if (!results.length) return;
   if (typeof AndroidDownload !== 'undefined') {
-    results.forEach((item, i) => {
+    results.forEach((item,i) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
-        AndroidDownload.saveBase64Image(base64, item.filename);
-        if (i === results.length - 1) {
-          AndroidDownload.showToast(results.length + ' images saved to Downloads/Mirror Border');
-        }
+        AndroidDownload.saveBase64Image(reader.result.split(',')[1], item.filename);
+        if (i===results.length-1) AndroidDownload.showToast(results.length+' images saved to Downloads/Bleed Edge');
       };
       reader.readAsDataURL(item.blob);
     });
   } else {
-    results.forEach(item => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(item.blob);
-      a.download = item.filename;
-      a.click();
-    });
+    results.forEach(item => { const a=document.createElement('a'); a.href=URL.createObjectURL(item.blob); a.download=item.filename; a.click(); });
   }
 }
 </script>
