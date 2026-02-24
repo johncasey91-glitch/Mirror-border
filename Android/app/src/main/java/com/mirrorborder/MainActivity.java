@@ -126,14 +126,17 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openPicker() {
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("image/*");
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-            startActivityForResult(
-                Intent.createChooser(intent, "Select Images"),
-                FILE_CHOOSER_REQUEST
-            );
+            // MUST run on UI thread - JavascriptInterface runs on a background thread
+            runOnUiThread(() -> {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("image/*");
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                startActivityForResult(
+                    Intent.createChooser(intent, "Select Images"),
+                    FILE_CHOOSER_REQUEST
+                );
+            });
         }
 
         @JavascriptInterface
