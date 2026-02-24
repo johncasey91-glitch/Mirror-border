@@ -190,14 +190,15 @@ function syncInput() {
 }
 
 function addFiles(files) {
-  const realNames = window._realFileNames || [];
-  window._realFileNames = [];
-  let idx = 0;
+  const nameMap = window._realFileNames || {};
+  window._realFileNames = {};
   for (const f of files) {
     if (!f.type.startsWith('image/')) continue;
-    const realName = realNames[idx] || f.name;
-    idx++;
-    queue.push({ file: f, name: realName, objectUrl: URL.createObjectURL(f), status: 'pending' });
+    // On Android, f.name is the internal URI number.
+    // We use the map injected by Java to get the real display name.
+    const objectUrl = URL.createObjectURL(f);
+    const realName = nameMap[f.name] || nameMap[Object.keys(nameMap).find(k => k.endsWith(f.name))] || f.name;
+    queue.push({ file: f, name: realName, objectUrl: objectUrl, status: 'pending' });
   }
   renderQueue();
   document.getElementById('btn-process').disabled = queue.length === 0;
@@ -360,7 +361,6 @@ async function processAll() {
 
 function saveAll() {
   if (!results.length) return;
-  alert('First file name: ' + (results[0] ? results[0].filename : 'none'));
   if (typeof AndroidDownload !== 'undefined') {
     results.forEach((item, i) => {
       const reader = new FileReader();
