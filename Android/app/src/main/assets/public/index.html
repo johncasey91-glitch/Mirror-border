@@ -133,7 +133,7 @@
 
   <div class="card">
     <div class="card-label">Images</div>
-    <div class="drop-zone" id="drop-zone" onclick="openPicker()">
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
       <div class="dz-icon">+</div>
       <p><strong>Tap to select images</strong><br>JPG, PNG, WEBP supported<br>Multiple selection allowed</p>
     </div>
@@ -173,7 +173,20 @@
 <script>
 let queue = [];
 let results = [];
-let borderType = 'mirror'; // 'mirror' or 'black'
+let borderType = 'mirror';
+
+// Called by Java: receives image as base64 dataUrl with real filename
+function receiveImageFromJava(dataUrl, realName) {
+  fetch(dataUrl)
+    .then(r => r.blob())
+    .then(blob => {
+      const objectUrl = URL.createObjectURL(blob);
+      queue.push({ file: { size: blob.size, type: blob.type }, name: realName, objectUrl: objectUrl, status: 'pending' });
+      renderQueue();
+      document.getElementById('btn-process').disabled = false;
+    })
+    .catch(() => {});
+}
 
 function selectType(type) {
   borderType = type;
@@ -189,32 +202,10 @@ function syncInput() {
   document.getElementById('border-px').value = document.getElementById('border-slider').value;
 }
 
-function openPicker() {
-  if (typeof AndroidBridge !== 'undefined') {
-    AndroidBridge.openFilePicker();
-  } else {
-    document.getElementById('file-input').click();
-  }
-}
-
-// Called by Java with real base64 data and real filename
-function addFileFromJava(dataUrl, realName) {
-  // Convert dataUrl to a Blob so we can use it like a regular file
-  fetch(dataUrl)
-    .then(r => r.blob())
-    .then(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      const fakeFile = { size: blob.size, type: blob.type };
-      queue.push({ file: fakeFile, name: realName, objectUrl: objectUrl, status: 'pending' });
-      renderQueue();
-      document.getElementById('btn-process').disabled = false;
-    });
-}
-
 function addFiles(files) {
   for (const f of files) {
     if (!f.type.startsWith('image/')) continue;
-    queue.push({ file: f, name: f.name, objectUrl: URL.createObjectURL(f), status: 'pending' });
+    queue.push({ file: f, name: f.name, objectUrl: URL.createObjectURL(f), status: 'pending', resultBlob: null });
   }
   renderQueue();
   document.getElementById('btn-process').disabled = queue.length === 0;
