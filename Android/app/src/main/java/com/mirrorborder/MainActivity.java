@@ -3,9 +3,11 @@ package com.mirrorborder;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.OpenableColumns;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -18,6 +20,7 @@ import android.widget.Toast;
 import android.util.Base64;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 
 public class MainActivity extends Activity {
 
@@ -69,6 +72,23 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/public/index.html");
     }
 
+    // ── Read real filename from content URI ───────────────────────────────
+    private String getRealFileName(Uri uri) {
+        String result = null;
+        if ("content".equals(uri.getScheme())) {
+            try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (idx >= 0) result = cursor.getString(idx);
+                }
+            } catch (Exception e) { /* ignore */ }
+        }
+        if (result == null) {
+            result = uri.getLastPathSegment();
+        }
+        return result != null ? result : "image.png";
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == FILE_CHOOSER_REQUEST) {
@@ -84,6 +104,21 @@ public class MainActivity extends Activity {
                     results = new Uri[]{ data.getData() };
                 }
             }
+
+            // Before passing URIs to WebView, inject real filenames into JS
+            if (results != null) {
+                // Build a JS array of real filenames and call a JS function
+                StringBuilder js = new StringBuilder("window._realFileNames = [");
+                for (int i = 0; i < results.length; i++) {
+                    String name = getRealFileName(results[i]);
+                    js.append("\"").append(name.replace("\"", "_")).append("\"");
+                    if (i < results.length - 1) js.append(",");
+                }
+                js.append("];");
+                final String jsCode = js.toString();
+                webView.post(() -> webView.evaluateJavascript(jsCode, null));
+            }
+
             filePathCallback.onReceiveValue(results);
             filePathCallback = null;
         }
@@ -102,9 +137,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void saveBase64Image(String base64Data, String filename) {
             try {
-                // Sanitize filename - keep only safe characters
-                String safeName = filename.replaceAll("[^a-zA-Z0-9._\\-() ]", "_");
-                if (safeName.isEmpty()) safeName = "image.png";
+                // Sanitize but preserve original name
+                String safeName = filename.replaceAll("[^a-zA-Z0-9._\\-() ]", "_").trim();
+                if (safeName.isEmpty() || safeName.equals(".png")) safeName = "image.png";
+                if (!safeName.toLowerCase().endsWith(".png")) {
+                    safeName = safeName.replaceAll("\\.[^.]+$", "") + ".png";
+                }
 
                 byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
 
@@ -114,7 +152,6 @@ public class MainActivity extends Activity {
                 );
                 if (!dir.exists()) dir.mkdirs();
 
-                // If file already exists, add counter to avoid overwrite
                 File outFile = new File(dir, safeName);
                 int counter = 1;
                 while (outFile.exists()) {
@@ -128,9 +165,7 @@ public class MainActivity extends Activity {
                 fos.flush();
                 fos.close();
 
-            } catch (Exception e) {
-                // silent
-            }
+            } catch (Exception e) { /* silent */ }
         }
 
         @JavascriptInterface
