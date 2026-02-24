@@ -133,7 +133,7 @@
 
   <div class="card">
     <div class="card-label">Images</div>
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="drop-zone" id="drop-zone" onclick="openPicker()">
       <div class="dz-icon">+</div>
       <p><strong>Tap to select images</strong><br>JPG, PNG, WEBP supported<br>Multiple selection allowed</p>
     </div>
@@ -189,16 +189,32 @@ function syncInput() {
   document.getElementById('border-px').value = document.getElementById('border-slider').value;
 }
 
+function openPicker() {
+  if (typeof AndroidBridge !== 'undefined') {
+    AndroidBridge.openFilePicker();
+  } else {
+    document.getElementById('file-input').click();
+  }
+}
+
+// Called by Java with real base64 data and real filename
+function addFileFromJava(dataUrl, realName) {
+  // Convert dataUrl to a Blob so we can use it like a regular file
+  fetch(dataUrl)
+    .then(r => r.blob())
+    .then(blob => {
+      const objectUrl = URL.createObjectURL(blob);
+      const fakeFile = { size: blob.size, type: blob.type };
+      queue.push({ file: fakeFile, name: realName, objectUrl: objectUrl, status: 'pending' });
+      renderQueue();
+      document.getElementById('btn-process').disabled = false;
+    });
+}
+
 function addFiles(files) {
-  const nameMap = window._realFileNames || {};
-  window._realFileNames = {};
   for (const f of files) {
     if (!f.type.startsWith('image/')) continue;
-    // On Android, f.name is the internal URI number.
-    // We use the map injected by Java to get the real display name.
-    const objectUrl = URL.createObjectURL(f);
-    const realName = nameMap[f.name] || nameMap[Object.keys(nameMap).find(k => k.endsWith(f.name))] || f.name;
-    queue.push({ file: f, name: realName, objectUrl: objectUrl, status: 'pending' });
+    queue.push({ file: f, name: f.name, objectUrl: URL.createObjectURL(f), status: 'pending' });
   }
   renderQueue();
   document.getElementById('btn-process').disabled = queue.length === 0;
