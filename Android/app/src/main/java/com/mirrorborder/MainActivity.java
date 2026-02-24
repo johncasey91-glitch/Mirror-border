@@ -18,7 +18,6 @@ import android.widget.Toast;
 import android.util.Base64;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 
 public class MainActivity extends Activity {
 
@@ -31,8 +30,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         Window window = getWindow();
-        window.setStatusBarColor(Color.parseColor("#0d0d1a"));
-        window.setNavigationBarColor(Color.parseColor("#0d0d1a"));
+        window.setStatusBarColor(Color.parseColor("#0a0a14"));
+        window.setNavigationBarColor(Color.parseColor("#0a0a14"));
 
         setContentView(R.layout.activity_main);
         webView = findViewById(R.id.webview);
@@ -56,9 +55,7 @@ public class MainActivity extends Activity {
             @Override
             public boolean onShowFileChooser(WebView wv, ValueCallback<Uri[]> callback,
                                              FileChooserParams params) {
-                if (filePathCallback != null) {
-                    filePathCallback.onReceiveValue(null);
-                }
+                if (filePathCallback != null) filePathCallback.onReceiveValue(null);
                 filePathCallback = callback;
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -81,9 +78,8 @@ public class MainActivity extends Activity {
                 if (data.getClipData() != null) {
                     int count = data.getClipData().getItemCount();
                     results = new Uri[count];
-                    for (int i = 0; i < count; i++) {
+                    for (int i = 0; i < count; i++)
                         results[i] = data.getClipData().getItemAt(i).getUri();
-                    }
                 } else if (data.getData() != null) {
                     results = new Uri[]{ data.getData() };
                 }
@@ -101,24 +97,39 @@ public class MainActivity extends Activity {
 
     public class SaveBridge {
         private final Context ctx;
-
         SaveBridge(Context ctx) { this.ctx = ctx; }
 
         @JavascriptInterface
         public void saveBase64Image(String base64Data, String filename) {
             try {
+                // Sanitize filename - keep only safe characters
+                String safeName = filename.replaceAll("[^a-zA-Z0-9._\\-() ]", "_");
+                if (safeName.isEmpty()) safeName = "image.png";
+
                 byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
+
                 File dir = new File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "Mirror Border"
+                    "Bleed Edge"
                 );
                 if (!dir.exists()) dir.mkdirs();
-                File outFile = new File(dir, filename);
+
+                // If file already exists, add counter to avoid overwrite
+                File outFile = new File(dir, safeName);
+                int counter = 1;
+                while (outFile.exists()) {
+                    String base = safeName.replace(".png", "");
+                    outFile = new File(dir, base + "_" + counter + ".png");
+                    counter++;
+                }
+
                 FileOutputStream fos = new FileOutputStream(outFile);
                 fos.write(bytes);
+                fos.flush();
                 fos.close();
+
             } catch (Exception e) {
-                // silent fail
+                // silent
             }
         }
 
