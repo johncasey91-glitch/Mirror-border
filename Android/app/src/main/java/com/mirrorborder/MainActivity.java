@@ -21,12 +21,17 @@ import android.util.Base64;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends Activity {
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST = 1;
+
+    // Map from content URI string to real display name
+    private final Map<String, String> uriToName = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +57,6 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
 
         webView.addJavascriptInterface(new SaveBridge(this), "AndroidDownload");
-
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -72,56 +76,58 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/public/index.html");
     }
 
-    // ── Read real filename from content URI ───────────────────────────────
     private String getRealFileName(Uri uri) {
-        String result = null;
         if ("content".equals(uri.getScheme())) {
-            try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+            try (Cursor cursor = getContentResolver().query(uri,
+                    new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
-                    int idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                    if (idx >= 0) result = cursor.getString(idx);
+                    String name = cursor.getString(0);
+                    if (name != null && !name.isEmpty()) return name;
                 }
             } catch (Exception e) { /* ignore */ }
         }
-        if (result == null) {
-            result = uri.getLastPathSegment();
-        }
-        return result != null ? result : "image.png";
+        String last = uri.getLastPathSegment();
+        return (last != null) ? last : "image.png";
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == FILE_CHOOSER_REQUEST) {
-            if (filePathCallback == null) return;
-            Uri[] results = null;
-            if (resultCode == Activity.RESULT_OK && data != null) {
-                if (data.getClipData() != null) {
-                    int count = data.getClipData().getItemCount();
-                    results = new Uri[count];
-                    for (int i = 0; i < count; i++)
-                        results[i] = data.getClipData().getItemAt(i).getUri();
-                } else if (data.getData() != null) {
-                    results = new Uri[]{ data.getData() };
-                }
-            }
+        if (requestCode != FILE_CHOOSER_REQUEST) return;
+        if (filePathCallback == null) return;
 
-            // Before passing URIs to WebView, inject real filenames into JS
-            if (results != null) {
-                // Build a JS array of real filenames and call a JS function
-                StringBuilder js = new StringBuilder("window._realFileNames = [");
-                for (int i = 0; i < results.length; i++) {
-                    String name = getRealFileName(results[i]);
-                    js.append("\"").append(name.replace("\"", "_")).append("\"");
-                    if (i < results.length - 1) js.append(",");
-                }
-                js.append("];");
-                final String jsCode = js.toString();
-                webView.post(() -> webView.evaluateJavascript(jsCode, null));
+        Uri[] results = null;
+        if (resultCode == Activity.RESULT_OK && data != null) {
+            if (data.getClipData() != null) {
+                int count = data.getClipData().getItemCount();
+                results = new Uri[count];
+                for (int i = 0; i < count; i++)
+                    results[i] = data.getClipData().getItemAt(i).getUri();
+            } else if (data.getData() != null) {
+                results = new Uri[]{ data.getData() };
             }
-
-            filePathCallback.onReceiveValue(results);
-            filePathCallback = null;
         }
+
+        if (results != null) {
+            // Store real names and build JS injection BEFORE passing URIs to WebView
+            uriToName.clear();
+            StringBuilder js = new StringBuilder("window._realFileNames={");
+            for (int i = 0; i < results.length; i++) {
+                String uriStr = results[i].toString();
+                String realName = getRealFileName(results[i]);
+                uriToName.put(uriStr, realName);
+                // Escape for JS string
+                String safeUri = uriStr.replace("\\","\\\\").replace("\"","\\\"");
+                String safeName = realName.replace("\\","\\\\").replace("\"","\\\"");
+                js.append("\"").append(safeUri).append("\":\"").append(safeName).append("\"");
+                if (i < results.length - 1) js.append(",");
+            }
+            js.append("};");
+            final String jsCode = js.toString();
+            webView.post(() -> webView.evaluateJavascript(jsCode, null));
+        }
+
+        filePathCallback.onReceiveValue(results);
+        filePathCallback = null;
     }
 
     @Override
@@ -137,15 +143,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void saveBase64Image(String base64Data, String filename) {
             try {
-                // Sanitize but preserve original name
                 String safeName = filename.replaceAll("[^a-zA-Z0-9._\\-() ]", "_").trim();
-                if (safeName.isEmpty() || safeName.equals(".png")) safeName = "image.png";
-                if (!safeName.toLowerCase().endsWith(".png")) {
+                if (safeName.isEmpty()) safeName = "image.png";
+                if (!safeName.toLowerCase().endsWith(".png"))
                     safeName = safeName.replaceAll("\\.[^.]+$", "") + ".png";
-                }
 
                 byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
-
                 File dir = new File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
                     "Bleed Edge"
@@ -155,8 +158,7 @@ public class MainActivity extends Activity {
                 File outFile = new File(dir, safeName);
                 int counter = 1;
                 while (outFile.exists()) {
-                    String base = safeName.replace(".png", "");
-                    outFile = new File(dir, base + "_" + counter + ".png");
+                    outFile = new File(dir, safeName.replace(".png", "") + "_" + counter + ".png");
                     counter++;
                 }
 
