@@ -360,6 +360,7 @@ async function processAll() {
 
 function saveAll() {
   if (!results.length) return;
+  alert('First file name: ' + (results[0] ? results[0].filename : 'none'));
   if (typeof AndroidDownload !== 'undefined') {
     results.forEach((item, i) => {
       const reader = new FileReader();
