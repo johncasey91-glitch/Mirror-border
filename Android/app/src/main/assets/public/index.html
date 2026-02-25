@@ -141,13 +141,21 @@ let borderType = 'mirror';
 
 // ── Called by Java: receives file as base64 dataUrl + real filename ──────
 function receiveImage(dataUrl, realName) {
+  // If realName looks like a pure number (Android internal ID), ignore it
+  // and try to extract something meaningful, or fall back to 'image.png'
+  let useName = realName || 'image.png';
+  if (/^\d+$/.test(useName.replace(/\.\w+$/, ''))) {
+    // Pure numeric name - keep it as-is, it's likely already the real filename
+    // e.g. "6ed-4-armageddon.png" would NOT match this, "1000095904" would
+    useName = realName;
+  }
   fetch(dataUrl)
     .then(r => r.blob())
     .then(blob => {
       const objectUrl = URL.createObjectURL(blob);
       queue.push({
         file: { size: blob.size, type: blob.type },
-        name: realName,
+        name: useName,
         objectUrl: objectUrl,
         status: 'pending'
       });
@@ -262,7 +270,9 @@ async function processAll() {
       const blob = borderType === 'mirror'
         ? await applyMirrorBorder(img, safeBorder)
         : await applyBlackBorder(img, safeBorder);
-      const filename = item.name.replace(/\.[^.]+$/, '') + '.png';
+      // Keep original name, just ensure .png extension
+      const baseName = item.name.replace(/\.[^.]+$/, '');
+      const filename = baseName + '.png';
       item.status = 'done';
       results.push({ blob, filename });
     } catch(e) { item.status = 'fail'; }
