@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
     }
 
     private String getRealFileName(Uri uri) {
+        // Method 1: OpenableColumns.DISPLAY_NAME
         try (Cursor c = getContentResolver().query(uri,
                 new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
             if (c != null && c.moveToFirst()) {
@@ -61,8 +62,20 @@ public class MainActivity extends Activity {
                 if (name != null && !name.isEmpty()) return name;
             }
         } catch (Exception ignored) {}
+
+        // Method 2: last path segment
         String last = uri.getLastPathSegment();
-        return (last != null) ? last : "image.png";
+        if (last != null && last.contains(".")) return last;
+
+        // Method 3: from path
+        String path = uri.getPath();
+        if (path != null) {
+            int slash = path.lastIndexOf('/');
+            if (slash >= 0 && slash < path.length() - 1)
+                return path.substring(slash + 1);
+        }
+
+        return "image.png";
     }
 
     private byte[] readBytes(Uri uri) throws Exception {
@@ -101,6 +114,7 @@ public class MainActivity extends Activity {
                     byte[] bytes = readBytes(uri);
                     String b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
                     String dataUrl = "data:" + mime + ";base64," + b64;
+                    // Escape special chars for JS string
                     String safeName = realName
                         .replace("\\", "\\\\")
                         .replace("\"", "\\\"")
@@ -126,7 +140,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openPicker() {
-            // MUST run on UI thread - JavascriptInterface runs on a background thread
+            // Must run on UI thread - JavascriptInterface runs on background thread
             runOnUiThread(() -> {
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
