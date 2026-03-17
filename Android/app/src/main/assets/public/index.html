@@ -141,21 +141,13 @@ let borderType = 'mirror';
 
 // ── Called by Java: receives file as base64 dataUrl + real filename ──────
 function receiveImage(dataUrl, realName) {
-  // If realName looks like a pure number (Android internal ID), ignore it
-  // and try to extract something meaningful, or fall back to 'image.png'
-  let useName = realName || 'image.png';
-  if (/^\d+$/.test(useName.replace(/\.\w+$/, ''))) {
-    // Pure numeric name - keep it as-is, it's likely already the real filename
-    // e.g. "6ed-4-armageddon.png" would NOT match this, "1000095904" would
-    useName = realName;
-  }
   fetch(dataUrl)
     .then(r => r.blob())
     .then(blob => {
       const objectUrl = URL.createObjectURL(blob);
       queue.push({
         file: { size: blob.size, type: blob.type },
-        name: useName,
+        name: realName,
         objectUrl: objectUrl,
         status: 'pending'
       });
@@ -213,19 +205,33 @@ function clearQueue() {
 
 function applyMirrorBorder(img, b) {
   const sw = img.naturalWidth, sh = img.naturalHeight;
+  const CROP = 2; // crop 2px from each side to remove scanning artifacts
+  const border = b + CROP; // compensate so total added border = b
+  const cw = sw - CROP * 2;
+  const ch = sh - CROP * 2;
   const canvas = document.getElementById('work-canvas');
-  canvas.width = sw + b*2; canvas.height = sh + b*2;
+  canvas.width = cw + border * 2;
+  canvas.height = ch + border * 2;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(img, b, b);
-  ctx.save(); ctx.translate(b,b); ctx.scale(1,-1); ctx.drawImage(img,0,0,sw,b,0,0,sw,b); ctx.restore();
-  ctx.save(); ctx.translate(b,b+sh); ctx.scale(1,-1); ctx.drawImage(img,0,sh-b,sw,b,0,-b,sw,b); ctx.restore();
-  ctx.save(); ctx.translate(b,b); ctx.scale(-1,1); ctx.drawImage(img,0,0,b,sh,0,0,b,sh); ctx.restore();
-  ctx.save(); ctx.translate(b+sw,b); ctx.scale(-1,1); ctx.drawImage(img,sw-b,0,b,sh,-b,0,b,sh); ctx.restore();
-  ctx.save(); ctx.translate(b,b); ctx.scale(-1,-1); ctx.drawImage(img,0,0,b,b,0,0,b,b); ctx.restore();
-  ctx.save(); ctx.translate(b+sw,b); ctx.scale(1,-1); ctx.drawImage(img,sw-b,0,b,b,0,0,b,b); ctx.restore();
-  ctx.save(); ctx.translate(b,b+sh); ctx.scale(-1,1); ctx.drawImage(img,0,sh-b,b,b,0,0,b,b); ctx.restore();
-  ctx.save(); ctx.translate(b+sw,b+sh); ctx.scale(1,1); ctx.drawImage(img,sw-b,sh-b,b,b,0,0,b,b); ctx.restore();
+  // Draw cropped original in center (skip 2px from each side)
+  ctx.drawImage(img, CROP, CROP, cw, ch, border, border, cw, ch);
+  // Top
+  ctx.save(); ctx.translate(border,border); ctx.scale(1,-1); ctx.drawImage(img,CROP,CROP,cw,border,0,0,cw,border); ctx.restore();
+  // Bottom
+  ctx.save(); ctx.translate(border,border+ch); ctx.scale(1,-1); ctx.drawImage(img,CROP,sh-CROP-border,cw,border,0,-border,cw,border); ctx.restore();
+  // Left
+  ctx.save(); ctx.translate(border,border); ctx.scale(-1,1); ctx.drawImage(img,CROP,CROP,border,ch,0,0,border,ch); ctx.restore();
+  // Right
+  ctx.save(); ctx.translate(border+cw,border); ctx.scale(-1,1); ctx.drawImage(img,sw-CROP-border,CROP,border,ch,-border,0,border,ch); ctx.restore();
+  // Top-left corner
+  ctx.save(); ctx.translate(border,border); ctx.scale(-1,-1); ctx.drawImage(img,CROP,CROP,border,border,0,0,border,border); ctx.restore();
+  // Top-right corner
+  ctx.save(); ctx.translate(border+cw,border); ctx.scale(1,-1); ctx.drawImage(img,sw-CROP-border,CROP,border,border,0,0,border,border); ctx.restore();
+  // Bottom-left corner
+  ctx.save(); ctx.translate(border,border+ch); ctx.scale(-1,1); ctx.drawImage(img,CROP,sh-CROP-border,border,border,0,0,border,border); ctx.restore();
+  // Bottom-right corner
+  ctx.save(); ctx.translate(border+cw,border+ch); ctx.scale(1,1); ctx.drawImage(img,sw-CROP-border,sh-CROP-border,border,border,0,0,border,border); ctx.restore();
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
 
@@ -270,9 +276,7 @@ async function processAll() {
       const blob = borderType === 'mirror'
         ? await applyMirrorBorder(img, safeBorder)
         : await applyBlackBorder(img, safeBorder);
-      // Keep original name, just ensure .png extension
-      const baseName = item.name.replace(/\.[^.]+$/, '');
-      const filename = baseName + '.png';
+      const filename = item.name.replace(/\.[^.]+$/, '') + '.png';
       item.status = 'done';
       results.push({ blob, filename });
     } catch(e) { item.status = 'fail'; }
